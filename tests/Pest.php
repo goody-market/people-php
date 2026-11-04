@@ -12,6 +12,7 @@ use Oki\People\Tests\Support\ArrayCache;
 use Oki\People\Tests\Support\FakePeople;
 use Oki\People\Tests\Support\FrozenClock;
 use Oki\People\Tests\Support\Stage;
+use Psr\Http\Message\RequestInterface;
 
 const ISSUER = 'https://people.example.com';
 const CLIENT = 'client-1';
@@ -59,6 +60,21 @@ function jwk(?string $public = null, string $kid = KID, array $overrides = []): 
     return ['kty' => 'RSA', 'use' => 'sig', 'alg' => 'RS256', 'kid' => $kid, 'n' => $encode($details['rsa']['n']), 'e' => $encode($details['rsa']['e']), ...$overrides];
 }
 
+/**
+ * The form a request carried.
+ *
+ * Shared, because more than one of these suites reads what was posted: a
+ * helper left in a test file is absent from a run of any other one.
+ *
+ * @return array<string, string>
+ */
+function form_of(?RequestInterface $request): array
+{
+    parse_str((string) $request?->getBody(), $form);
+
+    return array_map(strval(...), $form);
+}
+
 /** @return array<string, mixed> */
 function discovery_document(): array
 {
@@ -68,6 +84,7 @@ function discovery_document(): array
         'token_endpoint' => ISSUER.'/oauth/token',
         'jwks_uri' => ISSUER.'/oauth/jwks',
         'userinfo_endpoint' => ISSUER.'/oauth/userinfo',
+        'introspection_endpoint' => ISSUER.'/oauth/introspect',
         'end_session_endpoint' => ISSUER.'/oauth/logout',
     ];
 }

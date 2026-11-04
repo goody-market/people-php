@@ -19,14 +19,6 @@ function query_of(string $url): array
     return array_map(strval(...), $query);
 }
 
-/** @return array<string, string> */
-function form_of(?RequestInterface $request): array
-{
-    parse_str((string) $request?->getBody(), $form);
-
-    return array_map(strval(...), $form);
-}
-
 describe('beginning a sign-in', function () {
     it('sends somebody to People with PKCE, a state and a nonce', function () {
         $request = stage()->people->authorization()->begin(RETURN_TO);

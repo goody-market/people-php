@@ -86,6 +86,30 @@ a token names it (at most once a minute); a key People stops publishing stops
 verifying within `keysTtl` seconds (15 minutes by default). While People is
 unreachable, the last keys fetched keep working.
 
+### Asking whether a token is still good
+
+Where a local check is not enough — approving a payment, changing where money goes,
+acting as somebody else — ask People, which reads the record the token was issued
+from:
+
+```php
+$answer = $people->introspection()->of($bearerToken);
+
+if (! $answer->active) {
+    // Revoked, expired, or never ours. Refuse.
+}
+
+$answer->subject;
+$answer->can('payments.write');
+```
+
+A round trip, on your own client credentials, and only for confidential clients
+People's estate registered itself. **Everything else reads your own copy** — this is
+the expensive answer, not the default one.
+
+Every way of being no good answers `active: false` and nothing else, so there is one
+thing to read.
+
 ## Signing somebody in
 
 Authorization code with PKCE (S256), the only flow People offers people:
