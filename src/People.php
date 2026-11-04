@@ -82,6 +82,12 @@ final class People
         return new IdentityEvents($this->config, $this->http, $this->credentials);
     }
 
+    /** Whether an access token is still good, asked of People. */
+    public function introspection(): Introspection
+    {
+        return new Introspection($this->discovery, $this->http, $this->credentials);
+    }
+
     /** Who an access token belongs to, asked of People. */
     public function userinfo(): Userinfo
     {
