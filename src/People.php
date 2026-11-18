@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Oki\People;
 
 use Oki\People\Events\IdentityEvents;
+use Oki\People\Identity\Tickets;
 use Oki\People\Http\Transport;
 use Oki\People\Keys\KeySet;
 use Oki\People\OAuth\Authorization;
 use Oki\People\OAuth\ClientCredentials;
+use Oki\People\Profiles\Profiles;
 use Oki\People\Support\Remembered;
 use Oki\People\Tokens\AccessTokenVerifier;
 use Oki\People\Tokens\IdTokenVerifier;
@@ -92,6 +94,29 @@ final class People
     public function userinfo(): Userinfo
     {
         return new Userinfo($this->discovery, $this->http);
+    }
+
+    /**
+     * Everything done as the person whose access token this is.
+     *
+     * Their own record, their contacts, their profile and their password —
+     * each allowed exactly what People allows them.
+     */
+    public function caller(string $accessToken): Caller
+    {
+        return new Caller($this->config->issuer(), $this->http, $accessToken);
+    }
+
+    /** Invitations, on the key People issued to this service. */
+    public function tickets(): Tickets
+    {
+        return new Tickets($this->config, $this->http);
+    }
+
+    /** What somebody shows the world under their handle. On no credential. */
+    public function profiles(): Profiles
+    {
+        return new Profiles($this->config->issuer(), $this->http);
     }
 
     /** People's discovery document. */

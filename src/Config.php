@@ -22,6 +22,7 @@ final readonly class Config
      * @param  string|null  $audience  What this API is called in an access token's `aud` — its hostname, `api.example.com`. Null when it verifies no access tokens.
      * @param  int  $timeout  Seconds before a call to People is given up on.
      * @param  int  $keysTtl  Seconds a fetched key set or discovery document stays fresh.
+     * @param  string|null  $apiKey  The key People issued to this service, for what it does as itself rather than as somebody.
      */
     public function __construct(
         public string $issuer,
@@ -30,6 +31,7 @@ final readonly class Config
         public ?string $audience = null,
         public int $timeout = 5,
         public int $keysTtl = 900,
+        public ?string $apiKey = null,
     ) {
         if (! str_starts_with($issuer, 'https://') && ! str_starts_with($issuer, 'http://')) {
             throw new InvalidArgumentException('The issuer is People\'s address, starting https://.');
@@ -48,6 +50,18 @@ final readonly class Config
         return $this->clientId !== null && $this->clientId !== ''
             ? $this->clientId
             : throw new InvalidArgumentException('This needs a client id.');
+    }
+
+    /**
+     * The key this service acts on when no person is behind the call.
+     *
+     * @return non-empty-string
+     */
+    public function apiKey(): string
+    {
+        return $this->apiKey !== null && $this->apiKey !== ''
+            ? $this->apiKey
+            : throw new InvalidArgumentException('This needs the API key People issued to this service.');
     }
 
     /** @return non-empty-string */

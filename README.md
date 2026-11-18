@@ -24,6 +24,9 @@ Register your application at People. You get:
 - a **client secret**, if your application runs on a server. A browser or mobile app
   gets none and relies on PKCE alone;
 - the **redirect URIs** People may send people back to;
+- an **API key**, where this service does anything as itself rather than as whoever is
+  calling it — minting an invitation ticket, say. It is not a person's token and must
+  never stand in for one;
 - the **audiences** your tokens may be presented at — the hostnames of the APIs that
   will accept them, e.g. `api.example.com`. Add People's own hostname to read
   identity events.
@@ -40,6 +43,7 @@ $people = new People(
         clientId: 'your-client-id',
         clientSecret: getenv('PEOPLE_CLIENT_SECRET'),
         audience: 'api.example.com', // this API's hostname, to verify access tokens
+        apiKey: getenv('PEOPLE_API_KEY'), // what this service does as itself, not as somebody
     ),
     $httpClient,      // Psr\Http\Client\ClientInterface
     $requestFactory,  // Psr\Http\Message\RequestFactoryInterface
@@ -169,6 +173,104 @@ The SDK reads the feed on a token your client holds for itself (the
 client-credentials grant, scope `identity.events`). Your client's audiences must
 include People's own hostname.
 
+## Asking People about people
+
+Everything past signing in is grouped by **what the call is made on**, because the two
+credentials are not interchangeable:
+
+| On | Reach it with | What it does |
+| --- | --- | --- |
+| The key People issued to this service | `$people->tickets()` | What this service does as itself |
+| The access token the caller presented | `$people->caller($token)` | Exactly what People allows *them* |
+| Nothing | `$people->profiles()` | What somebody shows the world |
+
+A key that could act as a person is how a key ends up doing something as one, so a
+capability holding one cannot reach the other.
+
+### As this service: invitations
+
+```php
+$ticket = $people->tickets()->mint(
+    personId: $employee->person_id,
+    contacts: ['ada@example.com'],
+    purpose: 'Joining Example as an engineer.',
+    name: 'Ada Lovelace',
+);
+
+$ticket->secret;          // send it to them; People shows it once
+$ticket->proof->isKnown;  // People already holds somebody under one of those contacts
+```
+
+```php
+$proof = $people->tickets()->proof($secret);
+
+$proof?->isProved();   // null: People has never heard of it, or it has run out
+$proof?->provedBy;     // the account that signed in with it
+$proof?->personId;
+```
+
+### As the caller: their own record
+
+```php
+$caller = $people->caller($accessToken);
+
+$caller->me()->person?->name;
+```
+
+```php
+$register = $caller->people();
+
+$register->record(['first_name' => 'Ada', 'contacts' => [['type' => 'email', 'value' => 'ada@example.com']]]);
+$register->whoHolds('ada@example.com');          // everybody holding it — a contact can be shared
+$register->all(['person-1', 'person-2']);        // keyed by the id asked about
+$register->merge(['person-1', 'person-2']);      // fold duplicates; People says which survived
+```
+
+A record is identified by its contacts, so `record()` with a contact People already
+holds answers with the person holding it rather than a second copy of them. An id
+People knows nothing about is simply absent from a lookup, never null.
+
+```php
+$caller->contacts()->all(search: 'Ada');
+$caller->contacts()->file('person-1', 'email', 'ada@example.com', tag: 'work');
+$caller->contacts()->change($contactId, value: 'ada@example.org');
+$caller->contacts()->drop($contactId);
+
+$caller->profile()->change(['first_name' => 'Ada', 'username' => 'ada']);
+```
+
+```php
+$caller->passwords()->sendCode();                       // to the caller, always
+$set = $caller->passwords()->set($accountId, $code);    // the code proves it is them
+
+$set->password;     // plain text, shown once. Hand it over and keep no copy
+$set->mustChange;
+```
+
+The code is sent to the caller even when the password being set is somebody else's:
+an administrator proves it is them, then acts.
+
+### On nothing: a public profile
+
+```php
+$people->profiles()->of('ada')?->name;   // null where nobody holds the handle
+```
+
+### When People says no
+
+Every call throws, and which one it throws is the answer:
+
+| | |
+| --- | --- |
+| `PeopleRefused` | People answered, and the answer was no. `$status`, and `$error` where there is an OAuth code. Wrong tomorrow too: do not ask again |
+| `PeopleUnreachable` | People could not be asked, or said nothing usable. Worth asking again |
+
+Where **not there** is an answer rather than a failure — a lapsed ticket, a handle
+nobody holds, a contact recorded against nobody — the call answers null or an empty
+result instead. A refusal is never flattened into one.
+
+Retrying is the HTTP client's: this SDK sends each call once and says what happened.
+
 ## Without the SDK
 
 Everything above is plain OpenID Connect and REST:
@@ -182,6 +284,12 @@ Everything above is plain OpenID Connect and REST:
 | Sign out | `end_session_endpoint` |
 | A client's own token | `token_endpoint`, `grant_type=client_credentials` |
 | Identity events | `GET {issuer}/v1/identity/events?after={sequence}&limit={n}` on a client's own token with `identity.events` |
+| Invitations | `POST {issuer}/v1/manage/identity/tickets`, `GET …/{ticket}` on this service's API key |
+| Who a token is | `GET {issuer}/v1/me` |
+| The record | `GET/POST {issuer}/v1/people`, `GET {issuer}/v1/people/lookup`, `POST {issuer}/v1/manage/people/duplicates/merge` |
+| A public profile | `GET {issuer}/v1/profiles/{username}` |
+| The caller's own | `{issuer}/v1/my/contacts`, `PATCH {issuer}/v1/my/profile`, `POST {issuer}/v1/my/password/code` |
+| Setting a password | `PUT {issuer}/v1/manage/users/{user}/password` |
 
 ## Versioning
 
