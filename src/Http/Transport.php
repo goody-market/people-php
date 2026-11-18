@@ -49,6 +49,20 @@ final readonly class Transport
     }
 
     /**
+     * A JSON body, for People's REST endpoints.
+     *
+     * @param  array<string, mixed>  $body
+     * @param  array<string, string>  $headers
+     * @return array<mixed>
+     *
+     * @throws PeopleUnreachable|PeopleRefused
+     */
+    public function json(string $method, string $url, array $body = [], array $headers = []): array
+    {
+        return $this->send($method, $url, ['Content-Type' => 'application/json'] + $headers, $body === [] ? '{}' : (string) json_encode($body));
+    }
+
+    /**
      * @param  array<string, string>  $headers
      * @return array<mixed>
      */
@@ -70,8 +84,9 @@ final readonly class Transport
             throw new PeopleUnreachable("People could not be reached at {$url}.", previous: $e);
         }
 
+        $answered = (string) $response->getBody();
         /** @var mixed $decoded */
-        $decoded = json_decode((string) $response->getBody(), true);
+        $decoded = json_decode($answered, true);
         $status = $response->getStatusCode();
 
         if ($status >= 400 && $status < 500) {
@@ -82,6 +97,11 @@ final readonly class Transport
                 $status,
                 $said('error'),
             );
+        }
+
+        // 204, and anything else People says by status alone.
+        if ($status < 300 && trim($answered) === '') {
+            return [];
         }
 
         if ($status >= 300 || ! is_array($decoded)) {

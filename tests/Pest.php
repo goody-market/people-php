@@ -19,6 +19,7 @@ const CLIENT = 'client-1';
 const SECRET = 'client-secret';
 const AUDIENCE = 'api.example.com';
 const KID = 'key-1';
+const API_KEY = 'pk_service0000.key';
 
 /**
  * A keypair, generated once for the suite unless a fresh one is asked for.
@@ -102,6 +103,7 @@ function stage(?string $clientSecret = SECRET, ?string $audience = AUDIENCE): St
         clientId: CLIENT,
         clientSecret: $clientSecret,
         audience: $audience,
+        apiKey: API_KEY,
     ));
 }
 
