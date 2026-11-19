@@ -262,7 +262,7 @@ Every call throws, and which one it throws is the answer:
 
 | | |
 | --- | --- |
-| `PeopleRefused` | People answered, and the answer was no. `$status`, and `$error` where there is an OAuth code. Wrong tomorrow too: do not ask again |
+| `PeopleRefused` | People answered, and the answer was no. `$status`, `$error` where there is an OAuth code, and for a 422 `errors()` (field => messages) and `sentences()` (one line per field). Wrong tomorrow too: do not ask again |
 | `PeopleUnreachable` | People could not be asked, or said nothing usable. Worth asking again |
 
 Where **not there** is an answer rather than a failure — a lapsed ticket, a handle
