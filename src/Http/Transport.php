@@ -6,6 +6,7 @@ namespace Oki\People\Http;
 
 use Oki\People\Exceptions\PeopleRefused;
 use Oki\People\Exceptions\PeopleUnreachable;
+use Oki\People\Support\Payload;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -96,6 +97,7 @@ final readonly class Transport
                 $said('error_description') ?? $said('message') ?? "People refused the request with {$status}.",
                 $status,
                 $said('error'),
+                is_array($decoded) ? Payload::reasons($decoded['errors'] ?? null) : [],
             );
         }
 

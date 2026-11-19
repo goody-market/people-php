@@ -122,6 +122,35 @@ final class Payload
     }
 
     /**
+     * The field-by-field reasons of a refusal: field => messages.
+     *
+     * A field whose value is not a list of text keeps only the text it has, and
+     * is dropped when there is none.
+     *
+     * @param  mixed  $errors
+     * @return array<string, list<string>>
+     */
+    public static function reasons(mixed $errors): array
+    {
+        if (! is_array($errors)) {
+            return [];
+        }
+
+        $reasons = [];
+
+        foreach (self::named($errors) as $field => $messages) {
+            $kept = is_string($messages) ? [$messages] : (is_array($messages) ? self::words(['m' => $messages], 'm') : []);
+            $kept = array_values(array_filter($kept, fn (string $message): bool => $message !== ''));
+
+            if ($kept !== []) {
+                $reasons[$field] = $kept;
+            }
+        }
+
+        return $reasons;
+    }
+
+    /**
      * Only the fields People named, so a list never passes for a resource.
      *
      * @param  array<mixed>  $value
